@@ -153,7 +153,7 @@ df_train[item_description == 'No description yet', item_description := NA]
 
 dcorpus <- corpus(df_train$item_description)
 
-dfm1 <- dfm(dcorpus, ngrams = 1, ignoredFeatures = c("rm", stopwords("english")), remove_punct = TRUE, remove_numbers = TRUE, stem = TRUE)
+dfm1 <- dfm(dcorpus, ngrams = 1, remove = c("rm",stopwords("english")), remove_punct = TRUE, remove_numbers = TRUE, stem = TRUE)
 
 tf <- topfeatures(dfm1, n = 25)
 data.frame(term = names(tf), freq = unname(tf)) %>%
@@ -165,12 +165,11 @@ set.seed(100)
 textplot_wordcloud(dfm1, min.freq = 3e4, random.order = FALSE,
                    rot.per = .25, 
                    colors = RColorBrewer::brewer.pal(8,"Dark2"))
-
 dfm2 <- dcorpus %>%
   corpus_sample(size = floor(ndoc(dcorpus) * 0.15)) %>%
   dfm(
     ngrams = 2,
-    ignoredFeatures = c("rm", stopwords("english")),
+    remove = c("rm",stopwords("english")),
     remove_punct = TRUE,
     remove_numbers = TRUE,
     concatenator = " "
@@ -196,7 +195,7 @@ dfm3 <- dcorpus %>%
   corpus_sample(size = floor(ndoc(dcorpus) * 0.15)) %>%
   dfm(
     ngrams = 3,
-    ignoredFeatures = c("rm", stopwords("english")),
+    remove = c("rm", stopwords("english")),
     remove_punct = TRUE,
     remove_numbers = TRUE,
     concatenator = " "
@@ -462,20 +461,59 @@ xgb.plot.importance(importance_matrix[1:15], rel_to_first = TRUE, xlab = "Relati
 gg + ggplot2::ylab("Frequency")
 topPredictors <- cat(toString(importance_matrix[1:15,1]))
 #pred <- predict(bst, as.matrix(testSet[,topPredictors]), outputmargin=TRUE)
-pred <- predict(bst_final, as.matrix(testSet[,c("shippingT", "item_condition_id", "len_words", "cat_2Shoes", "cat_2Women.s.Handbags", "avg_len_words", "num_words", "cat_1Women", "cat_2Tops...Blouses", "cat_1Electronics", "cat_1Men", "cat_2Jewelry", "cat_2Athletic.Apparel", "cat_1Handmade", "cat_2Computers...Tablets")]), outputmargin=TRUE)
+
+predictors <- c("shippingT", "item_condition_id", "len_words", "cat_2Shoes", "cat_2Women.s.Handbags", "avg_len_words", "num_words", "cat_1Women", "cat_2Tops...Blouses", "cat_1Electronics", "cat_1Men", "cat_2Jewelry", "cat_2Athletic.Apparel", "cat_1Handmade", "cat_2Computers...Tablets")
+trainPortion <- floor(nrow(myTrainDmy)*0.1)
+trainSet <- myTrainDmy[1:floor(trainPortion/2),]
+testSet <- myTrainDmy[floor(trainPortion/2)+1:trainPortion,]
+
+#Model Tuning
+smallestError <- 100
+for (depth in seq(1,20,1))  {
+  for (rounds in seq(1,20,1)) {
+    
+    # train
+    bst <- xgboost(data = as.matrix(trainSet[,predictors]),
+                   label = trainSet[,outcomeName],
+                   max.depth=depth, nround=rounds,
+                   objective = "reg:linear", verbose=0,nthread=8)
+    gc()
+    
+    # predict
+    predictions <- abs(predict(bst, as.matrix(testSet[,predictors]), outputmargin=TRUE))
+    err <- Metrics::rmse((as.numeric(testSet[,outcomeName])+1), (as.numeric(predictions)+1))
+    
+    if (err < smallestError) {
+      smallestError = err
+      print(paste(depth,rounds,err))
+    }     
+  } 
+} 
+
+#Testing the models
+trainSet <- myTrainDmy[ 1:trainPortion,]
+
+# assign everything else to test
+testSet <- myTrainDmy[(trainPortion+1):nrow(myTrainDmy),]
+
+bst_adhoc <- xgboost(data = as.matrix(trainSet[,predictors]),
+                     label = trainSet[,outcomeName],
+                     max.depth=8, nround=9, objective = "reg:linear", verbose=0)
+pred <- predict(bst_adhoc, as.matrix(testSet[,predictors]), outputmargin=TRUE)
 rmse(as.numeric(testSet[,outcomeName]), as.numeric(pred))
-submission <- as.data.frame(cbind(train$id[(trainPortion+1):nrow(myTrainDmy)/2],exp(pred), pred))
-colnames(submission) <- c("test_id","price", "log price")
+submission <- as.data.frame(cbind(train$id[(trainPortion+1):nrow(myTrainDmy)],exp(pred)))
+colnames(submission) <- c("test_id","price")
+write.csv(submission,"sub1_6_9A.csv")
+
+
 ####=========================================================
-bst <- xgboost(data = as.matrix(trainSet[,predictors]),
-               label = trainSet[,outcomeName],
-               max.depth=8, nround=9, objective = "reg:linear", verbose=0)
-pred <- predict(bst, as.matrix(testSet[,predictors]), outputmargin=TRUE)
-rmse(as.numeric(testSet[,outcomeName]), as.numeric(pred))
+myTest <- test %>% select(item_condition_id,shippingT,len_words,category_name,cat_1,Class)
 
-submission <- as.data.frame(cbind(train$id[(trainPortion+1):nrow(myTrainDmy)/2],exp(pred), pred))
-colnames(submission) <- c("test_id","price", "log price")
-write.csv(submission,"sub1_6_9_1.csv")
+#Binarize all factors
+dmy <- dummyVars("~.",data=myTest)
+myTestDmy <- data.frame(predict(dmy, newdata = myTest))
+pred <- predict(bst_adhoc,as.matrix(myTestDmy[,predictors]),outputmargin = TRUE)
 
+submission <- as.data.frame(cbind(test$test_id,exp(pred)))
 
 

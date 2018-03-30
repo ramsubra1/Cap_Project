@@ -17,7 +17,7 @@ Latent Dirichlet Allocation from the document written by Edwin Chen
 
 Exploratory Data Analysis expanded on some of the item described by Troy Walters
 
-I also would like to acknowledge the help from my mentor Dhiraj Khanna with some parts of the code where advanced topics are used which are not part of the course. This helped me in reading advanced topics. Thanks again to Dhiraj for his patience with me during the last 3 months being accomodative to some of my schedule change requests. 
+I also would like to acknowledge the help from my mentor Dhiraj Khanna with some parts of the code where advanced topics are used which are not part of the course. This helped me in reading advanced topics. Thanks again to Dhiraj for his patience with me during the last 3 months and accomodating to some of my schedule change requests. 
 
 ##Code
 
@@ -29,7 +29,7 @@ Mercari is a Japanese community powered shopping app. It gives an opportunity fo
 
 ## Problem Statement
 
-As people try to sell their good(s) in Mercari website, there needs to be a effective tool to predict the price based on characteristics of the item as enteredd by the seller. The characteristics entered by the seller are as follows
+As people try to sell their good(s) in Mercari website, there needs to be a effective tool to predict the price based on characteristics of the item as entered by the seller. The characteristics entered by the seller are as follows
 
 1. Short Item Description
 2. Product Category
@@ -61,7 +61,7 @@ The above link contains datasets for both Train and Test. The data structure of 
 
 ## The Approach
 
-THe folllowing steps highlight the strategy adopted for carrying out analysis
+The following steps highlight the strategy adopted for carrying out analysis
 
 **1. Exploratory Analysis**  
   * Libraries Used  
@@ -89,7 +89,7 @@ THe folllowing steps highlight the strategy adopted for carrying out analysis
     In statistics, exploratory data analysis (EDA) is an approach to analyzing data sets to summarize their main characteristics, often with visual methods. A statistical model can be used or not, but primarily EDA is for seeing what the data can tell us beyond the formal modeling or hypothesis testing task.EDA is different from initial data analysis (IDA),[1] which focuses more narrowly on checking assumptions required for model fitting and hypothesis testing, and handling missing values and making transformations of variables as needed.
     * Libraries Used
     Below are the list of libraries that were used as part of building this project
-```{r trainexp1, eval=FALSE}
+```{r trainexp1, eval=TRUE, echo=TRUE, warning=FALSE,message=FALSE}
 library(tidyverse)
 library(data.table)
 library(tidytext)
@@ -113,64 +113,45 @@ library(RColorBrewer)
 ```
     * Data Overview
     Reading the train dataset
-```{r trainexp2, eval=FALSE}
+```{r trainexp2, eval=TRUE, echo=TRUE, warning=FALSE,message=FALSE}
 df_train <- fread("train.tsv")
 ```
     Check the number of records in the file matches to the number of records read into R
-```{r trainexp3, eval=FALSE}
-> dim(df_train)
-[1] 1482535 
+```{r trainexp3, eval=TRUE, echo=TRUE}
+ dim(df_train)
+ 
 ```
     Check the file size in MB matches to the file size in the system folder
-```{r trainexp4, eval=FALSE}
-  > print(object.size(df_train), units = 'Mb')
-417.3 Mb
+```{r trainexp4, eval=TRUE, echo=TRUE}
+  print(object.size(df_train), units = 'Mb')
+
 ```
     Check the summary of the data file loaded into R
     
-```{r trainexp5, eval=FALSE}
-  > summary(df_train)
-    train_id           name           item_condition_id category_name     
- Min.   :      0   Length:1482535     Min.   :1.000     Length:1482535    
- 1st Qu.: 370634   Class :character   1st Qu.:1.000     Class :character  
- Median : 741267   Mode  :character   Median :2.000     Mode  :character  
- Mean   : 741267                      Mean   :1.907                       
- 3rd Qu.:1111901                      3rd Qu.:3.000                       
- Max.   :1482534                      Max.   :5.000                       
-  brand_name            price            shipping      item_description  
- Length:1482535     Min.   :   0.00   Min.   :0.0000   Length:1482535    
- Class :character   1st Qu.:  10.00   1st Qu.:0.0000   Class :character  
- Mode  :character   Median :  17.00   Median :0.0000   Mode  :character  
-                    Mean   :  26.74   Mean   :0.4473                     
-                    3rd Qu.:  29.00   3rd Qu.:1.0000                     
-                    Max.   :2009.00   Max.   :1.0000                     
+```{r trainexp5, eval=TRUE, echo=TRUE}
+  summary(df_train)
+           
 ```
     
     * Target Variable Analysis (Price)
-```{r trainexp6, eval=FALSE}
+```{r trainexp6, eval=TRUE, echo=TRUE}
 range(df_train$price)
-[1]    0 2009
+
 ```
    he item price ranges from 0 (I guess some items on Mercari are given away?) to $2009. Let's look at the histogram of prices. Because price is likely skewed and because there are some 0s, we'll plot the log of price + 1.
-```{r trainexp7, eval = FALSE}
+```{r trainexp7, eval = TRUE, message=FALSE,warning=FALSE}
   ggplot(data = df_train, aes(x = log(price+1))) + 
     geom_histogram(fill = 'orangered2') +
     labs(title = 'Histogram of log item price + 1')
 
 
 ```
-   
-```{r trainexp8, out.width="400px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/ItemPrice.png")
-```
 The (log price + 1) appears to be centered around 3 and has a longer right tail due to the 0 bound on the left.   
    
   * Item Condition
   Next let us look at Item Condition
-```{r trainexp9, eval = FALSE}
+```{r trainexp9, eval = TRUE, echo = TRUE, message=FALSE, warning=FALSE}
 table(df_train$item_condition_id)
-     1      2      3      4      5 
-640549 375479 432161  31962   2384 
 
 ## Let us plot number of ITEM by CONDITION CATEGORY
 df_train[, .N, by = item_condition_id] %>%
@@ -180,40 +161,26 @@ df_train[, .N, by = item_condition_id] %>%
 
 ```
 
-```{r trainexp10, out.width="400px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/ItemConditionCategory.png")
-```
-
 The item condition ranges from 1 to 5. There are more items of condition 1 than any other. Items of condition 4 and 5 are relatively rare. It's not clear from the data description what the ordinality of this variable is. My assumption is that since conditions 4 and 5 are so rare these are likely the better condition items. We can try and verify this. If a higher item condition is better, it should have a positive correlation with price. Let's see if that is the case.
 
-```{r trainexp11, eval = FALSE}
+```{r trainexp11, eval = TRUE, message = FALSE, warning = FALSE}
 table(df_train$item_condition_id)
-      item_condition_id      N median_price
-1:                 1 640549           18
-2:                 2 375479           17
-3:                 3 432161           16
-4:                 4  31962           15
-5:                 5   2384           19
 
 ggplot(data = df_train, aes(x = as.factor(item_condition_id), y = log(price + 1))) +   geom_boxplot(fill = 'cyan2', color = 'darkgrey')
 
 ```
 
-```{r trainexp12, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/ItemCorrelation.png")
-```
+
 
 Looking at the average price by condition shows a relationship that is not quite as neat as expected. Condition 5 clearly has the highest price, however condition 1 has the next-highest price, followed by condition 2, then 3, then 4.  Condition 5 is a bit of an anomaly in that it has the highest price. However, it also has the fewest number of items, so our point estimate has the most uncertainty.
 
   * Shipping
-  The inital thought is that items where the shipping fee is paid by the seller will be higher-priced. However, there are a number of conflating factors. This may be true within specific product categories and item conditions, but not when comparing items on the aggregate. Let's see.
+  The initial thought is that items where the shipping fee is paid by the seller will be higher-priced. However, there are a number of conflating factors. This may be true within specific product categories and item conditions, but not when comparing items on the aggregate. Let's see.
   
  
-```{r trainexp13, eval = FALSE}
+```{r trainexp13, eval = TRUE, ECHO = TRUE, warning = FALSE, message=FALSE}
 table(df_train$shipping)
 
-     0      1 
-819435 663100 
 
 ###Distribution of price by shipping where 1 is by seller and 0 is by purchaser
 df_train %>%
@@ -222,16 +189,12 @@ df_train %>%
   labs(x = 'Log price', y = '', title = 'Distribution of price by shipping')
 
 ```
-
-```{r trainexp14, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/PriceShipping.png")
-```
  
 Items where the shipping is paid by the seller have a lower average price.
 
   * Brand
  
-```{r trainexp15, eval = FALSE}
+```{r trainexp15, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 #plot to find the top 25 median price by brandname
 df_train[, .(median_price = median(price)), by = brand_name] %>%
   head(25) %>%
@@ -240,41 +203,18 @@ df_train[, .(median_price = median(price)), by = brand_name] %>%
 
 ```
 
-```{r trainexp16, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/BrandName.png")
-```
-
-The Air Jordan and Acacia Swimear brands are by far the most expensive brands, with a median price of $80 and $60 respectively.
+The Air Jordan and Acacia Swimwear brands are by far the most expensive brands, with a median price of $80 and $60 respectively.
 
   * Item Categories
   Now let's take a look at the categories. First, how many product categories are there?
    
-```{r trainexp17, eval = FALSE}
+```{r trainexp17, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 #find the number of unique categories
 length(unique((df_train$category_name)))
-[1] 1288
 
-sort(table(dtrain$category_name), decreasing = TRUE)[1:10]
-             Women/Athletic Apparel/Pants, Tights, Leggings 
-                                                      60177 
-                              Women/Tops & Blouses/T-Shirts 
-                                                      46380 
-                                         Beauty/Makeup/Face 
-                                                      34335 
-                                         Beauty/Makeup/Lips 
-                                                      29910 
-                   Electronics/Video Games & Consoles/Games 
-                                                      26557 
-                                         Beauty/Makeup/Eyes 
-                                                      25215 
-Electronics/Cell Phones & Accessories/Cases, Covers & Skins 
-                                                      24676 
-                                       Women/Underwear/Bras 
-                                                      21274 
-                                Women/Tops & Blouses/Blouse 
-                                                      20284 
-                            Women/Tops & Blouses/Tank, Cami 
-                                                      20284 
+
+sort(table(df_train$category_name), decreasing = TRUE)[1:10]
+             
 
 ##Median price by item category
 df_train[, .(median = median(price)), by = category_name][order(median, decreasing = TRUE)][1:30] %>%
@@ -287,40 +227,23 @@ Looking at the ten most popular categories shows that women's apparel is quite p
 
 Now let's examine prices by category. What are the product categories with the highest selling price?
 
-```{r trainexp20, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/CategoryName.png")
-```
-
 The category 'Vintage and Collectibles/Antique/Furniture' has the highest median sale price, followed by 'Kids/Strollers/Standard.
 
 These product categories are quite specific. It would be interesting to aggregate these to broader categories and explore further. Since subcategories are divided by '/', we can easily obtain each individual item's first and second level categories using data.table's tstrsplit() function. 
 
-```{r trainexp21, eval=FALSE}
+```{r trainexp21, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 df_train[, c("level_1_cat", "level_2_cat") := tstrsplit(df_train$category_name, split = "/", keep = c(1,2))]
 
 head(df_train[, c("level_1_cat", "level_2_cat")])
 
-  level_1_cat         level_2_cat
-1:         Men                Tops
-2: Electronics Computers & Tablets
-3:       Women      Tops & Blouses
-4:        Home         Home DÃ©cor
-5:       Women             Jewelry
-6:       Women               Other
+
 ```
 
 How many top level categories are there?
 
-```{r trainexp22, eval=FALSE}
+```{r trainexp22, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 table(df_train$level_1_cat)
-                Beauty            Electronics               Handmade 
-                207828                 122690                  30842 
-                  Home                   Kids                    Men 
-                 67871                 171689                  93680 
-                 Other      Sports & Outdoors Vintage & Collectibles 
-                 45351                  25342                  46530 
-                 Women 
-                664385 
+ 
 
 df_train %>%
   ggplot(aes(x = level_1_cat, y = log(price+1))) + 
@@ -331,52 +254,36 @@ df_train %>%
 ```
 
 
-```{r trainexp23, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/PriceByTopLevelCat.png")
-```
-
 Interestingly, the Men's category seems to have the highest median price. Let's do the same for the second level categories.
 
 
-```{r trainexp24, eval=FALSE}
+```{r trainexp24, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 df_train[, c("level_1_cat", "level_2_cat") := tstrsplit(df_train$category_name, split = "/", keep = c(1,2))]
 
 head(df_train[, c("level_1_cat", "level_2_cat")])
 
-  level_1_cat         level_2_cat
-1:         Men                Tops
-2: Electronics Computers & Tablets
-3:       Women      Tops & Blouses
-4:        Home         Home DÃ©cor
-5:       Women             Jewelry
-6:       Women               Other
 ```
 
 How many top level categories are there?
 
-```{r trainexp24a, eval=FALSE}
-length(unique(df_train$level_2_cat))
-[1] 114
+```{r trainexp24a, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
+##length(unique(df_train$level_2_cat))
+
 #Create a box plot for level 2 categories
-df_train %>%
-  ggplot(aes(x = level_2_cat, y = log(price+1))) + 
-  geom_boxplot(fill = 'cyan2', color = 'darkgrey') + 
-  coord_flip() + 
-  labs(x = '', y = 'Log price + 1', title = 'Boxplot of price by second-level category')
+##df_train %>%
+##  ggplot(aes(x = level_2_cat, y = log(price+1))) + 
+##  geom_boxplot(fill = 'cyan2', color = 'darkgrey') + 
+##  coord_flip() + 
+##  labs(x = '', y = 'Log price + 1', title = 'Boxplot of price by second-level category')
 
 ```
 
-
-```{r trainexp25, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/PriceByLevel2Cat.png")
-```
-
-  * Feature Iteractions
+  * Feature Interactions
   Now let us examine how item counts are distributed across top-level category and condition.
 
-```{r trainexp26, eval=FALSE}
+```{r trainexp26, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 p1 <-
-    dtrain[, .N, by = c('level_1_cat', 'item_condition_id')] %>%
+    df_train[, .N, by = c('level_1_cat', 'item_condition_id')] %>%
     ggplot(aes(x = item_condition_id, y = level_1_cat, fill = N/1000)) +
     geom_tile() +
     scale_fill_gradient(low = 'lightblue', high = 'cyan4') +
@@ -385,7 +292,7 @@ p1 <-
     theme(legend.position = 'bottom')
     
 p2 <-
-    dtrain[, .(median_price = median(price)), by = c('level_1_cat', 'item_condition_id')] %>%
+    df_train[, .(median_price = median(price)), by = c('level_1_cat', 'item_condition_id')] %>%
     ggplot(aes(x = item_condition_id, y = level_1_cat, fill = median_price)) +
     geom_tile() +
     scale_fill_gradient(low = 'lightblue', high = 'cyan4', labels = dollar) +
@@ -398,18 +305,15 @@ grid.arrange(p1, p2, ncol = 2)
 ```
 
 
-```{r trainexp27, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/FeatureInteraction.png")
-```
 
 Women's items of condition 1,2, and 3 are the most numerous. This is followed by Beauty products. 
 
   * Item Description
-  At this point, we've already done a significant amount of data exploration and we haven't even gotten to to real bulk of this problem, the descritption text. The description in unstructured data, so in order to explore it fully, we'll need to do some text processing and normalization.
+  At this point, we've already done a significant amount of data exploration and we haven't even gotten to to real bulk of this problem, the description text. The description in unstructured data, so in order to explore it fully, we'll need to do some text processing and normalization.
 
 Is there a relationship between description length and price?
 
-```{r trainexp28, eval=FALSE}
+```{r trainexp28, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 
 #Check if there is a relationship between the length of description and price
 df_train[, desc_length := nchar(item_description)]
@@ -418,33 +322,26 @@ df_train[, desc_length := nchar(item_description)]
 df_train[item_description == 'No description yet', desc_length := NA]
 
 cor(df_train$desc_length, df_train$price, use = 'complete.obs')
-[1] 0.04328234
+
 
 ```
 
 There is no correlation between description length and price.
 
-Now let's begin the text analysis. We'll use the quanteda package to do this. First, we will remove from the description column any occurences of 'No description yet'. Then we will convert the description column into a corpus object.
+Now let's begin the text analysis. We'll use the quanteda package to do this. First, we will remove from the description column any occurrences of 'No description yet'. Then we will convert the description column into a corpus object.
 
-```{r trainexp29, eval=FALSE}
+```{r trainexp29, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 df_train[item_description == 'No description yet', item_description := NA]
 # create the corpus object from the item_description column
 dcorpus <- corpus(df_train$item_description)
 # check first few lines of summary frame
 summary(dcorpus)[1:5, ]
 
-Length Class             Mode
-1 2      PlainTextDocument list
-2 2      PlainTextDocument list
-3 2      PlainTextDocument list
-4 2      PlainTextDocument list
-5 2      PlainTextDocument list
-
 ```
 
-Now let's create a document-term matrix of the descriptions. To do this, we use the dfm() function and pass in our corpus object. We start with individual words, remove english stopwords and punctuation, and stem words.
+Now let's create a document-term matrix of the descriptions. To do this, we use the dfm() function and pass in our corpus object. We start with individual words, remove English stopwords and punctuation, and stem words.
 
-```{r trainexp30a, eval=FALSE}
+```{r trainexp30a, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 dfm1 <- dfm(
     dcorpus, 
     ngrams = 1, 
@@ -465,33 +362,22 @@ data.frame(term = names(tf), freq = unname(tf)) %>%
 
 ```
 
-
-```{r trainexp30, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/MostCommonDescWords.png")
-```
-
 We can also use our dfm object to make a word cloud. Here I make a cloud with words that appear at least 30,000 times in the dataset.
 
-```{r trainexp31, eval=FALSE}
+```{r trainexp31, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 set.seed(100)
 textplot_wordcloud(dfm1, min.freq = 3e4, random.order = FALSE,
                    rot.per = .25, 
                    colors = RColorBrewer::brewer.pal(8,"Dark2"))
 ```
-
-
-```{r trainexp32, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/WordCloud1.png")
-```
-
 What if we wanted to look at ngrams? We can do so in a similar way, setting the ngrams argument in dfm() to 2. Because this will result in a very large document-term matrix and take a very long time, I use the sample_corpus() function to take a random sample of 15% of the documents in the corpus.
 
-```{r trainexp33, eval=FALSE}
+```{r trainexp33, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 dfm2 <- dcorpus %>%
     corpus_sample(size = floor(ndoc(dcorpus) * 0.15)) %>%
     dfm(
         ngrams = 2,
-        ignoredFeatures = c("rm", stopwords("english")),
+        remove = c("rm", stopwords("english")),
         remove_punct = TRUE,
         remove_numbers = TRUE,
         concatenator = " "
@@ -507,35 +393,25 @@ data.frame(term = names(tf), freq = unname(tf)) %>%
     coord_flip() 
 ```
 
-
-```{r trainexp34a, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/MostBiGram.png")
-```
-
-'Brand new' is the most comonly-occuring bigram follow by 'free shipping'. We can also make a word cloud of bigrams.
+'Brand new' is the most commonly-occurring bigram follow by 'free shipping'. We can also make a word cloud of bigrams.
 
 
-```{r trainexp33a, eval=FALSE}
+```{r trainexp33a, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 set.seed(100)
 textplot_wordcloud(dfm2, min.freq = 2000, random.order = FALSE,
                    rot.per = .25, 
                    colors = RColorBrewer::brewer.pal(8,"Dark2"))
 ```
 
-
-```{r trainexp34, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/WordCloud2.png")
-```
-
 Let's repeat this process one more time, this time with 3-grams.
 
 
-```{r trainexp35, eval=FALSE}
+```{r trainexp35, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 dfm3 <- dcorpus %>%
     corpus_sample(size = floor(ndoc(dcorpus) * 0.15)) %>%
     dfm(
         ngrams = 3,
-        ignoredFeatures = c("rm", stopwords("english")),
+        remove = c("rm", stopwords("english")),
         remove_punct = TRUE,
         remove_numbers = TRUE,
         concatenator = " "
@@ -552,28 +428,18 @@ data.frame(term = names(tf), freq = unname(tf)) %>%
     coord_flip() 
 ```
 
-
-```{r trainexp36, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/Most3Gram.png")
-```
-
 We see that 'price is firm' and 'new with tags' are the most common 3-grams by a large margin. 'Brand new never' (probably part of 'brand new never worn'), 'check out my', and 'smoke free home' are other popular trigrams.
 
-```{r trainexp37, eval=FALSE}
+```{r trainexp37, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 set.seed(100)
 textplot_wordcloud(dfm3, min.freq = 2000, random.order = FALSE,
                    rot.per = .25, 
                    colors = RColorBrewer::brewer.pal(8,"Dark2"))
 ```
 
-
-```{r trainexp38, out.width="600px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/WordCloud3.png")
-```
-
 Let's add some of the other training features to our corpus so that we can do further analysis. We can do this using the docvars() function from the quanteda package.
 
-```{r trainexp39, eval=FALSE}
+```{r trainexp39, eval = TRUE, echo=TRUE,warning=FALSE,message=FALSE}
 ##Add other features as docvars
 docvars(dcorpus, "price") <- df_train$price
 docvars(dcorpus, "brand_name") <- df_train$brand_name
@@ -596,11 +462,6 @@ p2 <- summary(dcorpus) %>%
     labs(x = 'Number of tokens in description')
 
 grid.arrange(p1, p2, ncol = 2)
-```
-
-
-```{r trainexp40, out.width="1200px", echo = FALSE}
-knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/DocVar.png")
 ```
 
 The most interesting thing that we see here is that the Men's category has the lowest average number of tokens in the description. Not only that it has the tightest distribution around the mean. Due to the lack of information this may mean that accurately predicting prices in this category will be most difficult.
@@ -675,7 +536,7 @@ comb$Class <- ifelse(comb$price<=2.398,"Low",
 
 * Topic Modelling using Latent Dirichlet Allocation(LDA) model
   1. What is Topic Modelling? 
-  Topic Modelling provides an algorthmic solution to managing, organizing and annotating large texts. The annotations aid in tasks of information retrieval, classification and exploration. topic models are generative models which provide a probabilistic framework for the term frequency occurrences in documents. 
+  Topic Modelling provides an algorithmic solution to managing, organizing and annotating large texts. The annotations aid in tasks of information retrieval, classification and exploration. topic models are generative models which provide a probabilistic framework for the term frequency occurrences in documents. 
   
   LDA represents documents as mixtures of topics that spit out words with certain probabilities. It assumes that documents are produced in the following fashion: when writing each document.
   
@@ -693,7 +554,7 @@ Using the topic to generate the word itself (according to the topic's multinomia
   2. What is Latent Dirichlet Allocation(LDA) model
   This is the simplest form of topic modelling. In LDA, each document may be viewed as a mixture of various topics where each document is considered to have a set of topics that are assigned to it via LDA. This is identical to probabilistic latent semantic analysis (pLSA), except that in LDA the topic distribution is assumed to have a sparse Dirichlet prior. The sparse Dirichlet priors encode the intuition that documents cover only a small set of topics and that topics use only a small set of words frequently.
   
-  In this exercise LDA is used to identify the most frequently used words in each classification(Low, Mid, High, Higher, Highest). The number of occurances of words in each item description for every record in the data set for every classification is counted. The maximum number words based on classification is used to set the price classification as Low, Mid, High, Higher or Highest.  
+  In this exercise LDA is used to identify the most frequently used words in each classification(Low, Mid, High, Higher, Highest). The number of occurrences of words in each item description for every record in the data set for every classification is counted. The maximum number words based on classification is used to set the price classification as Low, Mid, High, Higher or Highest.  
 ```{r train4, eval=FALSE}
 LDAFunc <- function(x){
   #x$item_description <- prep_fun(x$item_description)
@@ -848,6 +709,10 @@ for (depth in seq(1,10,1)) {
   Instead of using all the data points from the dataset it is much more ideal to use only the important features or columns from the dataset to predict in this case item price
   
 ```{r train8, eval=FALSE}
+#Testing the models
+trainSet <- myTrainDmy[ 1:trainPortion,]
+
+# assign everything else to test
 testSet <- myTrainDmy[(trainPortion+1):nrow(myTrainDmy)/2,]
 
 bst_final <- xgboost(data = as.matrix(trainSet[,predictors]),
@@ -874,24 +739,35 @@ knitr::include_graphics("c://Users/rsubra02/Documents/Mercari/Document/FeatureIm
 ```
 
 ```{r train11, eval=FALSE}
-pred <- predict(bst_final, as.matrix(testSet[,c("shippingT", "item_condition_id", "len_words", "cat_2Shoes", "cat_2Women.s.Handbags", "avg_len_words", "num_words", "cat_1Women", "cat_2Tops...Blouses", "cat_1Electronics", "cat_1Men", "cat_2Jewelry", "cat_2Athletic.Apparel", "cat_1Handmade", "cat_2Computers...Tablets")]), outputmargin=TRUE)
-rmse(as.numeric(testSet[,outcomeName]), as.numeric(pred))
+topPredictors <- cat(toString(importance_matrix[1:15,1]))
 
-[1] 0.7518869
+predictors <- c("shippingT", "item_condition_id", "len_words", "cat_2Shoes", "cat_2Women.s.Handbags", "avg_len_words", "num_words", "cat_1Women", "cat_2Tops...Blouses", "cat_1Electronics", "cat_1Men", "cat_2Jewelry", "cat_2Athletic.Apparel", "cat_1Handmade", "cat_2Computers...Tablets")
+trainPortion <- floor(nrow(myTrainDmy)*0.1)
+trainSet <- myTrainDmy[1:floor(trainPortion/2),]
+testSet <- myTrainDmy[floor(trainPortion/2)+1:trainPortion,]
 
-submission <- as.data.frame(cbind(train$id[(trainPortion+1):nrow(myTrainDmy)/2],exp(pred), pred))
-head(submission,10)
-   test_id    price log price
-1    14824 13.21467  2.581327
-2    14825 18.76460  2.931972
-3    14825 18.76460  2.931972
-4    14826 11.98122  2.483341
-5    14826 11.98122  2.483341
-6    14827 13.41127  2.596096
-7    14827 13.41127  2.596096
-8    14828 12.56228  2.530699
-9    14828 12.56228  2.530699
-10   14829 13.21467  2.581327
+#Model Tuning
+smallestError <- 100
+for (depth in seq(1,20,1))  {
+  for (rounds in seq(1,20,1)) {
+    
+    # train
+    bst <- xgboost(data = as.matrix(trainSet[,predictors]),
+                   label = trainSet[,outcomeName],
+                   max.depth=depth, nround=rounds,
+                   objective = "reg:linear", verbose=0,nthread=8)
+    gc()
+    
+    # predict
+    predictions <- abs(predict(bst, as.matrix(testSet[,predictors]), outputmargin=TRUE))
+    err <- Metrics::rmse((as.numeric(testSet[,outcomeName])+1), (as.numeric(predictions)+1))
+    
+    if (err < smallestError) {
+      smallestError = err
+      print(paste(depth,rounds,err))
+    }     
+  }
+} 
 
 ```
   Head of Submission will give the sample outcome or predicted item price
@@ -899,25 +775,31 @@ head(submission,10)
   * Testing the models
   Use the remaining part of the TRAIN dataset as the new TEST dataset and then use that to predict the prices of items. This was useful since the TRAIN dataset which had the price was used and once we had the output values that could be compared with the actual price with the variance of the error that was calculated using the RMSE function.
 ```{r train12, eval = FALSE}
-bst <- xgboost(data = as.matrix(trainSet[,predictors]),
+trainSet <- myTrainDmy[ 1:trainPortion,]
+
+# assign everything else to test
+testSet <- myTrainDmy[(trainPortion+1):nrow(myTrainDmy),]
+
+bst_adhoc <- xgboost(data = as.matrix(trainSet[,predictors]),
                label = trainSet[,outcomeName],
                max.depth=8, nround=9, objective = "reg:linear", verbose=0)
-pred <- predict(bst, as.matrix(testSet[,predictors]), outputmargin=TRUE)
+pred <- predict(bst_adhoc, as.matrix(testSet[,predictors]), outputmargin=TRUE)
 rmse(as.numeric(testSet[,outcomeName]), as.numeric(pred))
-[1] 0.6646858
-
-head(submission,10)
-   test_id    price log price
-1    14824 13.21467  2.581327
-2    14825 18.76460  2.931972
-3    14825 18.76460  2.931972
-4    14826 11.98122  2.483341
-5    14826 11.98122  2.483341
-6    14827 13.41127  2.596096
-7    14827 13.41127  2.596096
-8    14828 12.56228  2.530699
-9    14828 12.56228  2.530699
-10   14829 13.21467  2.581327
+[1] 0.6874568
+submission <- as.data.frame(cbind(train$id[(trainPortion+1):nrow(myTrainDmy)],exp(pred)))
+colnames(submission) <- c("test_id","price")
+head(summary,10)
+ test_id    price
+1    14825 19.79368
+2    14826 11.85752
+3    14827 14.60265
+4    14828 10.18738
+5    14829 12.92065
+6    14830 13.55039
+7    14831 11.75021
+8    14832 15.36275
+9    14833 19.63104
+10   14834 18.62362
 
 ```
 
