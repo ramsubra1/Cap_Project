@@ -442,6 +442,20 @@ for (depth in seq(1,10,1)) {
   }
 }   
 
+trainSet <- myTrainDmy[ 1:trainPortion,]
+
+# assign everything else to test
+testSet <- myTrainDmy[(trainPortion+1):nrow(myTrainDmy),]
+predictors <- names(myTrainDmy)[!names(myTrainDmy)%in%outcomeName]
+bst <- xgboost(data = as.matrix(trainSet[,predictors]),
+               label = trainSet[,outcomeName],
+               max.depth=8, nround=9, objective = "reg:linear", verbose=0)
+pred <- predict(bst, as.matrix(testSet[,predictors]), outputmargin=TRUE)
+rmse(as.numeric(testSet[,outcomeName]), as.numeric(pred))
+submission <- as.data.frame(cbind(train$id[(trainPortion+1):nrow(myTrainDmy)],pred))
+
+
+
 #Testing the models
 trainSet <- myTrainDmy[ 1:trainPortion,]
 

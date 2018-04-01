@@ -704,6 +704,18 @@ for (depth in seq(1,10,1)) {
     }  
   }
 }
+trainSet <- myTrainDmy[ 1:trainPortion,]
+
+# assign everything else to test
+testSet <- myTrainDmy[(trainPortion+1):nrow(myTrainDmy),]
+predictors <- names(myTrainDmy)[!names(myTrainDmy)%in%outcomeName]
+bst <- xgboost(data = as.matrix(trainSet[,predictors]),
+               label = trainSet[,outcomeName],
+               max.depth=8, nround=9, objective = "reg:linear", verbose=0)
+pred <- predict(bst, as.matrix(testSet[,predictors]), outputmargin=TRUE)
+rmse(as.numeric(testSet[,outcomeName]), as.numeric(pred))
+[1] 0.6772349
+
 ```
   * Feature Importance
   Instead of using all the data points from the dataset it is much more ideal to use only the important features or columns from the dataset to predict in this case item price
@@ -770,8 +782,7 @@ for (depth in seq(1,20,1))  {
 } 
 
 ```
-  Head of Submission will give the sample outcome or predicted item price
-
+  
   * Testing the models
   Use the remaining part of the TRAIN dataset as the new TEST dataset and then use that to predict the prices of items. This was useful since the TRAIN dataset which had the price was used and once we had the output values that could be compared with the actual price with the variance of the error that was calculated using the RMSE function.
 ```{r train12, eval = FALSE}
@@ -786,6 +797,14 @@ bst_adhoc <- xgboost(data = as.matrix(trainSet[,predictors]),
 pred <- predict(bst_adhoc, as.matrix(testSet[,predictors]), outputmargin=TRUE)
 rmse(as.numeric(testSet[,outcomeName]), as.numeric(pred))
 [1] 0.6874568
+
+```
+Comapring the RMSE between all the predictors and the highly inportant predictors:   
+**All predictors - 0.6772349**  
+**Highly important predictors - 0.6874568**  
+This shows that the RMSE is almost the same and hence does not make any difference if we use all the predictors or only the important predictors
+
+```{r train13, eval=FALSE}
 submission <- as.data.frame(cbind(train$id[(trainPortion+1):nrow(myTrainDmy)],exp(pred)))
 colnames(submission) <- c("test_id","price")
 head(summary,10)
